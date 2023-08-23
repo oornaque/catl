@@ -87,7 +87,11 @@ fn main() {
         }
     };
 
-    let result = input.read_string().replace('\n', "");
+    #[cfg(target_os = "windows")]
+    let newline = "\r\n";
+    #[cfg(not(target_os = "windows"))]
+    let newline = '\n';
+    let result = input.read_string().replace(newline, "");
 
     if !(std::io::stdout().is_terminal()) || matches.get_flag("ommit_newline") {
         print!("{}", result);
