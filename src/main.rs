@@ -9,6 +9,8 @@ use std::{
     fs
 };
 
+use regex::Regex;
+
 use clap:: {
     crate_name,
     Command,
@@ -71,6 +73,13 @@ fn main() {
                 .help("Ommit the newline when printing the output. Useful when redirecting the output to a file")
                 .action(ArgAction::SetTrue)
         )
+        .arg(
+            Arg::new("until")
+                .short('u')
+                .long("until")
+                .help("Regex until the program will concatenate lines. After the regex the program will output a new line")
+                .num_args(1)
+        )
         .get_matches();
 
     let input = if matches.contains_id("file") {
@@ -92,11 +101,23 @@ fn main() {
     #[cfg(not(target_os = "windows"))]
     let newline = '\n';
     
-    let result = input.read_string().replace(newline, "");
+    let input_string = input.read_string();
 
-    if !(std::io::stdout().is_terminal()) || matches.get_flag("ommit_newline") {
-        print!("{}", result);
-    } else {
-        println!("{}", result);
+    let input_strings: Vec<&str> = match matches.get_one::<String>("until") {
+        Some(until) => {
+            let re = Regex::new(until).expect("Could not compile regex");
+            re.split(&input_string).collect()
+        },
+        None => vec![&input_string],
+    };
+    let results: Vec<String> = input_strings.iter().map(|l| l.replace(newline, "")).collect();
+
+    let should_output_without_newline = !(std::io::stdout().is_terminal()) || matches.get_flag("ommit_newline");
+    for result in &results{
+        if should_output_without_newline && result == results.last().unwrap() {
+            print!("{}", result);
+        } else {
+            println!("{}", result);
+        }
     }
 }
